@@ -2,7 +2,7 @@ import yaml
 import requests
 
 # ❌ Hardcoded AWS credentials (secret)
-AWS_ACCESS_KEY = "AKIAIOSFODNN7EXAMPLE"
+AWS_ACCESS_KEY = "AKIAIOSFODNN7EXAMPLE1"
 AWS_SECRET_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 
 # ✅ Safe usage
@@ -28,3 +28,4 @@ if __name__ == "__main__":
     print("Parsing YAML...")
     data = unsafe_yaml_load(example_yaml)
     print("Data:", data)
+    testing 12121
