@@ -17,8 +17,8 @@ jobs:
     - name: Send Pipeline Metadata and Handle Security Scan
       env:
         # Notification webhook URLs - From repository secrets
-        SLACK_WEBHOOK: "https://hooks.slack.com/services/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"
-        GOOGLE_CHAT_WEBHOOK: "https://chat.googleapis.com/v1/spaces/AAQAeRUvlOU/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=_34nAZI5OgKH-ps5cBFA9bPtX3tVc-e5gYGiCzb2WK8"
+        SLACK: "https://hooks.slack.com/services/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"
+        GOOGLECHAT: "https://chat.googleapis.com/v1/spaces/AAAAYTAM5lI/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=NEMRjash1XbfMkimLuFbePWOqZ5E8UDpBAkyVy9lwDA"
         # Manual trigger inputs
         MANUAL_TRIGGER: ${{ github.event_name == 'workflow_dispatch' }}
         SCAN_TYPE: ${{ github.event.inputs.scan_type || 'full' }}
@@ -30,10 +30,11 @@ jobs:
         echo "Creating GitHub payload with full context..."
         
         # Send complete GitHub payload to security API
-        response=$(curl -s -w "%{http_code}" -X POST "$SECURITY_API_URL" \
+        response=$(curl -s -w "%{http_code}" -X POST "$http://127.0.0.1:8080/pipline/github-actions-webhook" \
         -H "Content-Type: application/json" \
+        -H "x-token: J1#29dDqm\A72+>R" \
         -d '{
-          "tenant": "'$TENANT_ID'",
+          "tenant": "26",
           "CI": true,
           "platform": "github",
           "github": {
@@ -140,9 +141,9 @@ jobs:
           local message="$1"
           local status="$2"
           
-          if [ -n "$SLACK_WEBHOOK" ]; then
+          if [ -n "https://hooks.slack.com/services/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" ]; then
             echo "Sending Slack notification..."
-            curl -X POST "$SLACK_WEBHOOK" \
+            curl -X POST "https://hooks.slack.com/services/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" \
               -H "Content-Type: application/json" \
               -d "{\"text\": \"$message\"}" \
               && echo "✅ Slack notification sent!" \
@@ -157,9 +158,9 @@ jobs:
           local message="$1"
           local status="$2"
           
-          if [ -n "$GOOGLE_CHAT_WEBHOOK" ]; then
+          if [ -n "https://chat.googleapis.com/v1/spaces/AAAAYTAM5lI/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=NEMRjash1XbfMkimLuFbePWOqZ5E8UDpBAkyVy9lwDA" ]; then
             echo "Sending Google Chat notification..."
-            curl -X POST "$GOOGLE_CHAT_WEBHOOK" \
+            curl -X POST "https://chat.googleapis.com/v1/spaces/AAAAYTAM5lI/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=NEMRjash1XbfMkimLuFbePWOqZ5E8UDpBAkyVy9lwDA" \
               -H "Content-Type: application/json" \
               -d "{\"text\": \"$message\"}" \
               && echo "✅ Google Chat notification sent!" \
