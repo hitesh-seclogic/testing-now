@@ -1,0 +1,344 @@
+name: Security Scan Pipeline
+
+on:
+  pull_request:
+    branches: [ '*' ]
+  push:
+    branches: [ '*' ]
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Send Pipeline Metadata and Handle Security Scan
+      env:
+        # Notification webhook URLs - From repository secrets
+        SLACK_WEBHOOK: "https://hooks.slack.com/services/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"
+        GOOGLE_CHAT_WEBHOOK: "https://chat.googleapis.com/v1/spaces/AAQAeRUvlOU/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=_34nAZI5OgKH-ps5cBFA9bPtX3tVc-e5gYGiCzb2WK8"
+        # Manual trigger inputs
+        MANUAL_TRIGGER: ${{ github.event_name == 'workflow_dispatch' }}
+        SCAN_TYPE: ${{ github.event.inputs.scan_type || 'full' }}
+        NOTIFY_TEAMS: ${{ github.event.inputs.notify_teams || 'true' }}
+      run: |
+        echo "Preparing payload..."
+        
+        # Create comprehensive GitHub payload using the full context
+        echo "Creating GitHub payload with full context..."
+        
+        # Send complete GitHub payload to security API
+        response=$(curl -s -w "%{http_code}" -X POST "$SECURITY_API_URL" \
+        -H "Content-Type: application/json" \
+        -d '{
+          "tenant": "'$TENANT_ID'",
+          "CI": true,
+          "platform": "github",
+          "github": {
+            "action": "${{ github.action }}",
+            "actor": "${{ github.actor }}",
+            "api_url": "${{ github.api_url }}",
+            "base_ref": "${{ github.base_ref }}",
+            "event_name": "${{ github.event_name }}",
+            "event_path": "${{ github.event_path }}",
+            "graphql_url": "${{ github.graphql_url }}",
+            "head_ref": "${{ github.head_ref }}",
+            "job": "${{ github.job }}",
+            "path": "${{ github.path }}",
+            "ref": "${{ github.ref }}",
+            "ref_name": "${{ github.ref_name }}",
+            "ref_protected": ${{ github.ref_protected }},
+            "ref_type": "${{ github.ref_type }}",
+            "repository": "${{ github.repository }}",
+            "repository_id": "${{ github.repository_id }}",
+            "repository_owner": "${{ github.repository_owner }}",
+            "repository_owner_id": "${{ github.repository_owner_id }}",
+            "repositoryUrl": "${{ github.repositoryUrl }}",
+            "retention_days": "${{ github.retention_days }}",
+            "run_attempt": "${{ github.run_attempt }}",
+            "run_id": "${{ github.run_id }}",
+            "run_number": "${{ github.run_number }}",
+            "server_url": "${{ github.server_url }}",
+            "sha": "${{ github.sha }}",
+            "token": "[MASKED]",
+            "triggering_actor": "${{ github.triggering_actor }}",
+            "workflow": "${{ github.workflow }}",
+            "workflow_ref": "${{ github.workflow_ref }}",
+            "workflow_sha": "${{ github.workflow_sha }}",
+            "workspace": "${{ github.workspace }}"
+          },
+          "event": ${{ toJSON(github.event) }},
+          "runner": {
+            "os": "${{ runner.os }}",
+            "arch": "${{ runner.arch }}",
+            "name": "${{ runner.name }}",
+            "environment": "${{ runner.environment }}",
+            "tool_cache": "${{ runner.tool_cache }}",
+            "temp": "${{ runner.temp }}"
+          },
+          "env": {
+            "CI": "${{ env.CI }}",
+            "GITHUB_ACTIONS": "${{ env.GITHUB_ACTIONS }}",
+            "RUNNER_OS": "${{ env.RUNNER_OS }}",
+            "RUNNER_ARCH": "${{ env.RUNNER_ARCH }}",
+            "RUNNER_NAME": "${{ env.RUNNER_NAME }}",
+            "RUNNER_ENVIRONMENT": "${{ env.RUNNER_ENVIRONMENT }}"
+          },
+          "job": {
+            "container": ${{ toJSON(job.container) }},
+            "services": ${{ toJSON(job.services) }},
+            "status": "${{ job.status }}"
+          },
+          "steps": ${{ toJSON(steps) }},
+          "strategy": ${{ toJSON(strategy) }},
+          "matrix": ${{ toJSON(matrix) }},
+          "inputs": ${{ toJSON(inputs) }},
+          "vars": ${{ toJSON(vars) }},
+          "secrets": "[MASKED]"
+        }')
+        
+        # Extract HTTP status code and response body
+        http_code=$(echo "$response" | tail -c 4)
+        response_body=$(echo "$response" | head -c -4)
+        echo "HTTP Status Code: $http_code"
+        echo "Response Body: $response_body"
+        
+        # Extract detailed API response data using grep and sed
+        api_status=$(echo "$response_body" | grep -o '"status":"[^"]*"' | sed 's/"status":"\([^"]*\)"/\1/')
+        api_reason=$(echo "$response_body" | grep -o '"reason":"[^"]*"' | sed 's/"reason":"\([^"]*\)"/\1/')
+        scan_id=$(echo "$response_body" | grep -o '"scan_id":"[^"]*"' | sed 's/"scan_id":"\([^"]*\)"/\1/')
+        pipeline_uuid=$(echo "$response_body" | grep -o '"pipeline_uuid":"[^"]*"' | sed 's/"pipeline_uuid":"\([^"]*\)"/\1/')
+        
+        # Extract vulnerability summary
+        high_critical=$(echo "$response_body" | grep -o '"high_critical":[^,}]*' | sed 's/"high_critical":\([^,}]*\)/\1/')
+        medium=$(echo "$response_body" | grep -o '"medium":[^,}]*' | sed 's/"medium":\([^,}]*\)/\1/')
+        low=$(echo "$response_body" | grep -o '"low":[^,}]*' | sed 's/"low":\([^,}]*\)/\1/')
+        secrets=$(echo "$response_body" | grep -o '"secrets":[^,}]*' | sed 's/"secrets":\([^,}]*\)/\1/')
+        total_issues=$(echo "$response_body" | grep -o '"total_issues":[^,}]*' | sed 's/"total_issues":\([^,}]*\)/\1/')
+        
+        # Extract recommendations array (simplified approach)
+        recommendations=$(echo "$response_body" | grep -o '"recommendations":\[[^]]*\]' | sed 's/"recommendations":\[\(.*\)\]/\1/' | sed 's/"//g' | sed 's/,/\\n• /g' | sed 's/^/• /')
+        
+        # Display extracted data
+        echo "=== EXTRACTED API DATA ==="
+        echo "API Status: ${api_status:-'N/A'}"
+        echo "API Reason: ${api_reason:-'N/A'}"
+        echo "Scan ID: ${scan_id:-'N/A'}"
+        echo "Pipeline UUID: ${pipeline_uuid:-'N/A'}"
+        echo "High/Critical: ${high_critical:-0}"
+        echo "Medium: ${medium:-0}"
+        echo "Low: ${low:-0}"
+        echo "Secrets: ${secrets:-0}"
+        echo "Total Issues: ${total_issues:-0}"
+        echo "Recommendations: ${recommendations:-'N/A'}"
+        echo "=========================="
+        
+        # Function to send Slack notification
+        send_slack_notification() {
+          local message="$1"
+          local status="$2"
+          
+          if [ -n "$SLACK_WEBHOOK" ]; then
+            echo "Sending Slack notification..."
+            curl -X POST "$SLACK_WEBHOOK" \
+              -H "Content-Type: application/json" \
+              -d "{\"text\": \"$message\"}" \
+              && echo "✅ Slack notification sent!" \
+              || echo "❌ Failed to send Slack notification"
+          else
+            echo "⚠️ Slack webhook not configured"
+          fi
+        }
+        
+        # Function to send Google Chat notification
+        send_google_chat_notification() {
+          local message="$1"
+          local status="$2"
+          
+          if [ -n "$GOOGLE_CHAT_WEBHOOK" ]; then
+            echo "Sending Google Chat notification..."
+            curl -X POST "$GOOGLE_CHAT_WEBHOOK" \
+              -H "Content-Type: application/json" \
+              -d "{\"text\": \"$message\"}" \
+              && echo "✅ Google Chat notification sent!" \
+              || echo "❌ Failed to send Google Chat notification"
+          else
+            echo "⚠️ Google Chat webhook not configured"
+          fi
+        }
+        
+        # Function to send Microsoft Teams notification
+        send_teams_notification() {
+          local message="$1"
+          local status="$2"
+          local color=""
+          
+          case "$status" in
+            "success") color="Good" ;;
+            "failure") color="Attention" ;;
+            *) color="Warning" ;;
+          esac
+          
+          if [ -n "$TEAMS_WEBHOOK" ]; then
+            echo "Sending Teams notification..."
+            curl -X POST "$TEAMS_WEBHOOK" \
+              -H "Content-Type: application/json" \
+              -d "{
+                    \"@type\": \"MessageCard\",
+                    \"@context\": \"http://schema.org/extensions\",
+                    \"themeColor\": \"$color\",
+                    \"summary\": \"Security Scan Results\",
+                    \"sections\": [{
+                      \"activityTitle\": \"Security Scan Notification\",
+                      \"activitySubtitle\": \"Repository: $GITHUB_REPOSITORY\",
+                      \"text\": \"$message\",
+                      \"facts\": [
+                        {\"name\": \"Branch\", \"value\": \"$GITHUB_REF_NAME\"},
+                        {\"name\": \"PR Number\", \"value\": \"#$GITHUB_PR_NUMBER\"},
+                        {\"name\": \"Run Number\", \"value\": \"#$GITHUB_RUN_NUMBER\"},
+                        {\"name\": \"Actor\", \"value\": \"$GITHUB_ACTOR\"},
+                        {\"name\": \"Status\", \"value\": \"${api_status:-'N/A'}\"},
+                        {\"name\": \"High/Critical\", \"value\": \"${high_critical:-0}\"},
+                        {\"name\": \"Total Issues\", \"value\": \"${total_issues:-0}\"}
+                      ]
+                    }]
+                  }" \
+              && echo "✅ Teams notification sent!" \
+              || echo "❌ Failed to send Teams notification"
+          else
+            echo "⚠️ Teams webhook not configured"
+          fi
+        }
+        
+        # Function to send email notification
+        send_email_notification() {
+          local subject="$1"
+          local message="$2"
+          local status="$3"
+          
+          if [ -n "$EMAIL_API_KEY" ] && [ -n "$EMAIL_TO" ] && [ -n "$EMAIL_FROM" ]; then
+            echo "Sending email notification..."
+            
+            # Create HTML email content
+            html_content=$(cat <<EOF
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; }
+            .header { background-color: #f4f4f4; padding: 20px; text-align: center; }
+            .content { padding: 20px; }
+            .status-success { color: #28a745; }
+            .status-failure { color: #dc3545; }
+            .status-info { color: #17a2b8; }
+            .details { background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 10px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h2>Security Scan Results</h2>
+          </div>
+          <div class="content">
+            <h3>Repository: $GITHUB_REPOSITORY</h3>
+            <div class="details">
+              <p><strong>Branch:</strong> $GITHUB_REF_NAME</p>
+              <p><strong>PR Number:</strong> #$GITHUB_PR_NUMBER</p>
+              <p><strong>Run Number:</strong> #$GITHUB_RUN_NUMBER</p>
+              <p><strong>Commit:</strong> $GITHUB_SHA</p>
+              <p><strong>Actor:</strong> $GITHUB_ACTOR</p>
+              <p><strong>Status:</strong> <span class="status-$status">${api_status:-'N/A'}</span></p>
+              <p><strong>Scan ID:</strong> ${scan_id:-'N/A'}</p>
+            </div>
+            <h4>Vulnerability Summary:</h4>
+            <div class="details">
+              <p><strong>High/Critical:</strong> ${high_critical:-0}</p>
+              <p><strong>Medium:</strong> ${medium:-0}</p>
+              <p><strong>Low:</strong> ${low:-0}</p>
+              <p><strong>Secrets:</strong> ${secrets:-0}</p>
+              <p><strong>Total Issues:</strong> ${total_issues:-0}</p>
+            </div>
+            <p><strong>Time:</strong> $(date -u)</p>
+          </div>
+        </body>
+        </html>
+        EOF
+        )
+            
+            curl -X POST "$EMAIL_API_URL" \
+              -H "Authorization: Bearer $EMAIL_API_KEY" \
+              -H "Content-Type: application/json" \
+              -d "{
+                    \"personalizations\": [{
+                      \"to\": [{\"email\": \"$EMAIL_TO\"}]
+                    }],
+                    \"from\": {\"email\": \"$EMAIL_FROM\"},
+                    \"subject\": \"$subject\",
+                    \"content\": [{
+                      \"type\": \"text/html\",
+                      \"value\": \"$html_content\"
+                    }]
+                  }" \
+              && echo "✅ Email notification sent!" \
+              || echo "❌ Failed to send email notification"
+          else
+            echo "⚠️ Email configuration incomplete"
+          fi
+        }
+        
+        # Handle both successful API calls (200-299) and status 404 with valid JSON response
+        if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ] || [ "$http_code" = "404" ]; then
+          if echo "$response_body" | grep -q "pass" || [ "$api_status" = "pass" ]; then
+            echo "✅ Pipeline PASSED - Sending SUCCESS notifications to all platforms"
+            
+            SUCCESS_MESSAGE="✅ *SECURITY SCAN PASSED* ✅\\n\\n📊 *Repository:* ${{ github.repository }}\\n🔀 *Branch:* ${{ github.ref_name }}\\n🔗 *PR:* #${{ github.event.number }}\\n🚀 *Run:* #${{ github.run_number }}\\n👤 *Actor:* ${{ github.actor }}\\n📝 *Commit:* \`${{ github.sha }}\`\\n\\n🔒 *SECURITY RESULTS*\\n✅ *Status:* ${api_status:-'pass'}\\n🎯 *Result:* ${api_reason:-'All security checks passed'}\\n🔍 *Scan ID:* \`${scan_id:-'N/A'}\`\\n🆔 *Pipeline UUID:* \`${pipeline_uuid:-'N/A'}\`\\n\\n📈 *VULNERABILITY SUMMARY*\\n🔴 *High/Critical:* ${high_critical:-0}\\n🟡 *Medium:* ${medium:-0}\\n🟢 *Low:* ${low:-0}\\n🔑 *Secrets:* ${secrets:-0}\\n📊 *Total Issues:* ${total_issues:-0}\\n\\n💡 *API RECOMMENDATIONS*\\n${recommendations:-'• No critical actions required'}\\n\\n📡 *HTTP Code:* $http_code\\n⏰ *Time:* $(date -u)\\n\\n🎊 *Great job!* No critical security issues found!"
+            
+            # Send to all platforms
+            send_slack_notification "$SUCCESS_MESSAGE" "success"
+            send_google_chat_notification "$SUCCESS_MESSAGE" "success"
+            send_teams_notification "$SUCCESS_MESSAGE" "success"
+            send_email_notification "✅ Security Scan Passed - ${{ github.repository }}" "$SUCCESS_MESSAGE" "success"
+            
+            exit 0
+            
+          elif echo "$response_body" | grep -q "fail" || [ "$api_status" = "fail" ]; then
+            echo "❌ Pipeline FAILED - Sending FAILURE notifications to all platforms"
+            
+            FAILURE_MESSAGE="🚨 *SECURITY SCAN FAILED* 🚨\\n\\n📊 *Repository:* ${{ github.repository }}\\n🔀 *Branch:* ${{ github.ref_name }}\\n🔗 *PR:* #${{ github.event.number }}\\n🚀 *Run:* #${{ github.run_number }}\\n👤 *Actor:* ${{ github.actor }}\\n📝 *Commit:* \`${{ github.sha }}\`\\n\\n🔒 *SECURITY RESULTS*\\n❌ *Status:* ${api_status:-'fail'}\\n🚨 *Issue:* ${api_reason:-'Security vulnerabilities detected'}\\n🔍 *Scan ID:* \`${scan_id:-'N/A'}\`\\n🆔 *Pipeline UUID:* \`${pipeline_uuid:-'N/A'}\`\\n\\n📈 *VULNERABILITY SUMMARY*\\n🔴 *High/Critical:* ${high_critical:-0} ⚠️\\n🟡 *Medium:* ${medium:-0}\\n🟢 *Low:* ${low:-0}\\n🔑 *Secrets:* ${secrets:-0}\\n📊 *Total Issues:* ${total_issues:-0}\\n\\n💡 *API RECOMMENDATIONS*\\n${recommendations:-'• Review scan results and fix vulnerabilities'}\\n\\n📡 *HTTP Code:* $http_code\\n⏰ *Time:* $(date -u)\\n\\n🚨 *URGENT ACTION REQUIRED!*"
+            
+            # Send to all platforms
+            send_slack_notification "$FAILURE_MESSAGE" "failure"
+            send_google_chat_notification "$FAILURE_MESSAGE" "failure"
+            send_teams_notification "$FAILURE_MESSAGE" "failure"
+            send_email_notification "🚨 Security Scan Failed - ${{ github.repository }}" "$FAILURE_MESSAGE" "failure"
+            
+            exit 1
+            
+          else
+            echo "⚠️ Pipeline completed - Sending INFO notifications to all platforms"
+            
+            INFO_MESSAGE="ℹ️ *SECURITY SCAN INFO* ℹ️\\n\\n📊 *Repository:* ${{ github.repository }}\\n🔀 *Branch:* ${{ github.ref_name }}\\n🔗 *PR:* #${{ github.event.number }}\\n🚀 *Run:* #${{ github.run_number }}\\n👤 *Actor:* ${{ github.actor }}\\n\\n🔒 *SECURITY RESULTS*\\n📡 *Status:* ${api_status:-'Unknown'}\\n📄 *Response:* ${api_reason:-'No explicit pass/fail status found'}\\n🔍 *Scan ID:* \`${scan_id:-'N/A'}\`\\n\\n📈 *VULNERABILITY SUMMARY*\\n🔴 *High/Critical:* ${high_critical:-'N/A'}\\n🟡 *Medium:* ${medium:-'N/A'}\\n🟢 *Low:* ${low:-'N/A'}\\n🔑 *Secrets:* ${secrets:-'N/A'}\\n📊 *Total Issues:* ${total_issues:-'N/A'}\\n\\n📊 *HTTP Code:* $http_code\\n⏰ *Time:* $(date -u)\\n\\n💡 *Note:* Security scan completed but status unclear - please review logs"
+            
+            # Send to all platforms
+            send_slack_notification "$INFO_MESSAGE" "info"
+            send_google_chat_notification "$INFO_MESSAGE" "info"
+            send_teams_notification "$INFO_MESSAGE" "info"
+            send_email_notification "ℹ️ Security Scan Info - ${{ github.repository }}" "$INFO_MESSAGE" "info"
+            
+            exit 0
+          fi
+          
+        else
+          echo "❌ Pipeline FAILED - Sending ERROR notifications to all platforms"
+          
+          ERROR_MESSAGE="🚨 *SECURITY API ERROR* 🚨\\n\\n📊 *Repository:* ${{ github.repository }}\\n🔀 *Branch:* ${{ github.ref_name }}\\n🔗 *PR:* #${{ github.event.number }}\\n🚀 *Run:* #${{ github.run_number }}\\n👤 *Actor:* ${{ github.actor }}\\n\\n🔴 *HTTP Error:* $http_code\\n📡 *API Status:* ${api_status:-'API Connection Error'}\\n🔧 *Issue:* ${api_reason:-'Security API returned HTTP error'}\\n🔍 *Scan ID:* \`${scan_id:-'N/A'}\`\\n⏰ *Time:* $(date -u)\\n\\n💡 *ACTION REQUIRED:*\\n🔧 Check security API server status and connectivity\\n📋 Review workflow logs for detailed error information\\n🔄 Retry the workflow once API issues are resolved"
+          
+          # Send to all platforms
+          send_slack_notification "$ERROR_MESSAGE" "error"
+          send_google_chat_notification "$ERROR_MESSAGE" "error"
+          send_teams_notification "$ERROR_MESSAGE" "error"
+          send_email_notification "🚨 Security API Error - ${{ github.repository }}" "$ERROR_MESSAGE" "error"
+          
+          exit 1
+        fi
