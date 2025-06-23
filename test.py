@@ -2,7 +2,7 @@ import yaml
 import requests
 
 # ❌ Hardcoded AWS credentials (secret)
-AWS_ACCESS_KEY = "AKIAIOSFODNN7EXAMPLE"
+AWS_ACCESS_KEY = "AKIAIOSFODNN7EXAMPLE1"
 AWS_SECRET_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 
 # ✅ Safe usage
