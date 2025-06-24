@@ -33,18 +33,17 @@ jobs:
         echo "Preparing payload..."
         
         # Default security API URL if not set in secrets
-        SECURITY_API_URL="${SECURITY_API_URL:-http://127.0.0.1:8080/pipline/github-actions-webhook}"
-        TENANT_ID="${TENANT_ID:-55}"
+        
         
         # Create comprehensive GitHub payload using the full context
         echo "Creating GitHub payload with full context..."
         
         # Send complete GitHub payload to security API
-        response=$(curl -s -w "%{http_code}" -X POST "http://127.0.0.1:8080/pipline/github-actions-webhook" \
+        response=$(curl -s -w "%{http_code}" -X POST "https://073c-34-100-197-45.ngrok-free.app/pipline/github-actions-webhook" \
         -H "Content-Type: application/json" \
         -H "x-token: J1#29dDqm\A72+>R" \
         -d '{
-          "tenant": "'$TENANT_ID'",
+          "tenant": "26",
           "CI": true,
           "platform": "github",
           "github": {
