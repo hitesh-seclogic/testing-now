@@ -4,6 +4,7 @@ import requests
 # ❌ Hardcoded AWS credentials (secret)
 AWS_ACCESS_KEY = "AKIAIOSFODNN7EXAMPLE1"
 AWS_SECRET_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+REGION='us-east-1'
 
 # ✅ Safe usage
 def safe_yaml_load(yaml_str):
