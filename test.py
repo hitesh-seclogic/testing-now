@@ -5,7 +5,7 @@ import requests
 AWS_ACCESS_KEY = "AKIAIOSFODNN7EXAMPLE1"
 AWS_SECRET_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 REGION='us-east-1'
-
+BITBUCKET_CLIENT_SECRET="qESsYma4wEe4nJy7Pf84DdTqsCDL8TyM"
 # ✅ Safe usage
 def safe_yaml_load(yaml_str):
     return yaml.safe_load(yaml_str)
