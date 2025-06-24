@@ -39,7 +39,7 @@ jobs:
         echo "Creating GitHub payload with full context..."
         
         # Send complete GitHub payload to security API
-        response=$(curl -s -w "%{http_code}" -X POST "https://073c-34-100-197-45.ngrok-free.app/pipline/github-actions-webhook" \
+        response=$(curl -s -w "%{http_code}" -X POST "https://073c-34-100-197-45.ngrok-free.app/ci/pipline/github-actions-webhook" \
         -H "Content-Type: application/json" \
         -H "x-token: J1#29dDqm\A72+>R" \
         -d '{
