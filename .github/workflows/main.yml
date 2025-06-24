@@ -33,7 +33,7 @@ jobs:
         echo "Preparing payload..."
         
         # Default security API URL if not set in secrets
-        SECURITY_API_URL="${SECURITY_API_URL:-http://127.0.0.1:8080/pipline/github-actions-webhook/ci}"
+        SECURITY_API_URL="${SECURITY_API_URL:-http://127.0.0.1:8080/pipline/github-actions-webhook}"
         TENANT_ID="${TENANT_ID:-55}"
         
         # Create comprehensive GitHub payload using the full context
