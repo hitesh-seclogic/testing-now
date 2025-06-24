@@ -18,7 +18,7 @@ jobs:
       env:
         # Notification webhook URLs - From repository secrets
         SLACK: "https://hooks.slack.com/services/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"
-        GOOGLECHAT: "https://chat.googleapis.com/v1/spaces/AAAAYTAM5lI/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=NEMRjash1XbfMkimLuFbePWOqZ5E8UDpBAkyVy9lwDA"
+        GOOGLECHAT: "https://chat.googleapis.com/v1/spaces/AAAAsbMH-Xc/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=DJP-DPx0_I2xpuXJjmaZAz2WEFvtbOxN1w8cWLDtnp0"
         # Manual trigger inputs
         MANUAL_TRIGGER: ${{ github.event_name == 'workflow_dispatch' }}
         SCAN_TYPE: ${{ github.event.inputs.scan_type || 'full' }}
