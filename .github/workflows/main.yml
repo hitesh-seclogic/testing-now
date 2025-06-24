@@ -1,3 +1,4 @@
+name: Security Scan Pipeline
 
 on:
   pull_request:
@@ -16,15 +17,8 @@ jobs:
     - name: Send Pipeline Metadata and Handle Security Scan
       env:
         # Notification webhook URLs - From repository secrets
-        SLACK_WEBHOOK: "https://hooks.slack.com/services/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"
-        GOOGLE_CHAT_WEBHOOK: "https://chat.googleapis.com/v1/spaces/AAAAYTAM5lI/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=NEMRjash1XbfMkimLuFbePWOqZ5E8UDpBAkyVy9lwDA"
-        TEAMS_WEBHOOK: ${{ secrets.TEAMS_WEBHOOK }}
-        EMAIL_API_URL: ${{ secrets.EMAIL_API_URL }}
-        EMAIL_API_KEY: ${{ secrets.EMAIL_API_KEY }}
-        EMAIL_TO: ${{ secrets.EMAIL_TO }}
-        EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-        SECURITY_API_URL: ${{ secrets.SECURITY_API_URL }}
-        TENANT_ID: ${{ secrets.TENANT_ID }}
+        SLACK: "https://hooks.slack.com/services/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"
+        GOOGLECHAT: "https://chat.googleapis.com/v1/spaces/AAAAYTAM5lI/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=NEMRjash1XbfMkimLuFbePWOqZ5E8UDpBAkyVy9lwDA"
         # Manual trigger inputs
         MANUAL_TRIGGER: ${{ github.event_name == 'workflow_dispatch' }}
         SCAN_TYPE: ${{ github.event.inputs.scan_type || 'full' }}
@@ -32,14 +26,11 @@ jobs:
       run: |
         echo "Preparing payload..."
         
-        # Default security API URL if not set in secrets
-        
-        
         # Create comprehensive GitHub payload using the full context
         echo "Creating GitHub payload with full context..."
         
         # Send complete GitHub payload to security API
-        response=$(curl -s -w "%{http_code}" -X POST "https://073c-34-100-197-45.ngrok-free.app/ci/pipline/github-actions-webhook" \
+        response=$(curl -s -w "%{http_code}" -X POST "https://643a-34-100-197-45.ngrok-free.app/pipeline/github-actions-webhook" \
         -H "Content-Type: application/json" \
         -H "x-token: J1#29dDqm\A72+>R" \
         -d '{
@@ -150,9 +141,9 @@ jobs:
           local message="$1"
           local status="$2"
           
-          if [ -n "$SLACK_WEBHOOK" ]; then
+          if [ -n "https://hooks.slack.com/services/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" ]; then
             echo "Sending Slack notification..."
-            curl -X POST "$SLACK_WEBHOOK" \
+            curl -X POST "https://hooks.slack.com/services/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" \
               -H "Content-Type: application/json" \
               -d "{\"text\": \"$message\"}" \
               && echo "✅ Slack notification sent!" \
@@ -167,9 +158,9 @@ jobs:
           local message="$1"
           local status="$2"
           
-          if [ -n "$GOOGLE_CHAT_WEBHOOK" ]; then
+          if [ -n "https://chat.googleapis.com/v1/spaces/AAAAYTAM5lI/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=NEMRjash1XbfMkimLuFbePWOqZ5E8UDpBAkyVy9lwDA" ]; then
             echo "Sending Google Chat notification..."
-            curl -X POST "$GOOGLE_CHAT_WEBHOOK" \
+            curl -X POST "https://chat.googleapis.com/v1/spaces/AAAAYTAM5lI/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=NEMRjash1XbfMkimLuFbePWOqZ5E8UDpBAkyVy9lwDA" \
               -H "Content-Type: application/json" \
               -d "{\"text\": \"$message\"}" \
               && echo "✅ Google Chat notification sent!" \
