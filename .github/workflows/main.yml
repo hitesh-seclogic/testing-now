@@ -33,7 +33,7 @@ jobs:
         response=$(curl -s -w "%{http_code}" -X POST "https://643a-34-100-197-45.ngrok-free.app/pipeline/github-actions-webhook" \
         -H "Content-Type: application/json" \
         -H "x-token: J1#29dDqm\A72+>R" \
-        -d {
+        -d '{
           "tenant": "26",
           "CI": true,
           "platform": "github",
@@ -98,7 +98,7 @@ jobs:
           "inputs": ${{ toJSON(inputs) }},
           "vars": ${{ toJSON(vars) }},
           "secrets": "[MASKED]"
-        })
+        }')
         
         # Extract HTTP status code and response body
         http_code=$(echo "$response" | tail -c 4)
