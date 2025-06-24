@@ -158,9 +158,9 @@ jobs:
           local message="$1"
           local status="$2"
           
-          if [ -n "https://chat.googleapis.com/v1/spaces/AAAAYTAM5lI/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=NEMRjash1XbfMkimLuFbePWOqZ5E8UDpBAkyVy9lwDA" ]; then
+          if [ -n "https://chat.googleapis.com/v1/spaces/AAAAsbMH-Xc/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=DJP-DPx0_I2xpuXJjmaZAz2WEFvtbOxN1w8cWLDtnp0" ]; then
             echo "Sending Google Chat notification..."
-            curl -X POST "https://chat.googleapis.com/v1/spaces/AAAAYTAM5lI/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=NEMRjash1XbfMkimLuFbePWOqZ5E8UDpBAkyVy9lwDA" \
+            curl -X POST "https://chat.googleapis.com/v1/spaces/AAAAsbMH-Xc/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=DJP-DPx0_I2xpuXJjmaZAz2WEFvtbOxN1w8cWLDtnp0" \
               -H "Content-Type: application/json" \
               -d "{\"text\": \"$message\"}" \
               && echo "✅ Google Chat notification sent!" \
