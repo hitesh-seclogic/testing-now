@@ -42,6 +42,7 @@ jobs:
         # Send complete GitHub payload to security API
         response=$(curl -s -w "%{http_code}" -X POST "$SECURITY_API_URL" \
         -H "Content-Type: application/json" \
+        -H "x-token: J1#29dDqm\A72+>R" \
         -d '{
           "tenant": "'$TENANT_ID'",
           "CI": true,
