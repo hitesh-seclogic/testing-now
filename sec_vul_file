@@ -4,6 +4,7 @@ import requests
 # ❌ Hardcoded AWS credentials (secret)
 AWS_ACCESS_KEY = "AKIAIOSFODNN7EXAMPLE"
 AWS_SECRET_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+GITHUB_WEBHOOK_SECRET="LbpB1e60Dz1XBaP9C1gymdl3jgJ5Cg"
 
 # ✅ Safe usage
 def safe_yaml_load(yaml_str):
@@ -17,6 +18,7 @@ def unsafe_yaml_load(yaml_str):
 example_yaml = """
 a: 1
 b: 2
+c: 3
 """
 
 # ❌ Example: make insecure HTTP request
